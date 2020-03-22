@@ -1,5 +1,4 @@
-# jpm
-Java Package Manager
+# Java Package Manager
 
 This is a package manager for Java. The main objective is to avoid redundant configuration as much as possible.
 A typical project has no configuration file describing dependencies, versions, etc. Yet these things all exist.
@@ -15,7 +14,19 @@ a jpm file describing the project (project name, command names, project version,
 file is created automatically by the system, without the need to maintain configuration files.
 
 The philosophy of this tool is to let each project have a local package manager. You locally install JARs, placing them in a
-lib directory (with transitive dependencies). Version conflicts are resolved automatically to the extent possible with
-semantic versioning. You ultimately end up with a set of dependencies on the lib directory. When you install software
-into the global repository, all libs are placed in a global ~/.jpm/slib folder, and all launchers in a global ~/.jpm/sbin 
+lib directory (with transitive dependencies). Installation is also automatic, given the module dependencies of your
+module-info.java files. Version conflicts are resolved automatically to the extent possible with semantic versioning.
+You ultimately end up with a set of dependencies on the lib directory. When you install software into the global repository,
+all libs are placed in a global ~/.jpm/slib folder, and all launchers in a global ~/.jpm/sbin 
 folder that you should add to $PATH. Application data is in a ~/.jpm/share/your_app folder.
+
+The software is installed by running ./install.sh
+Make sure you add ~/.jpm/bin to $PATH
+
+Now you have the jpm command.
+
+jpm build
+* builds a project using zero configuration.
+
+jpm install
+* installs a project using zero configuration
