@@ -25,8 +25,8 @@ Make sure you add ~/.jpm/bin to $PATH
 
 Now you have the jpm command.
 
-jpm build
+$ jpm build
 * builds a project using zero configuration.
 
-jpm install
+$ jpm install
 * installs a project using zero configuration
