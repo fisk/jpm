@@ -57,15 +57,28 @@ public class Project {
         return getModulePath().getFileName().toString();
     }
 
+    private String _version;
+
     public String getProjectVersion() {
-        var result = Cmd.run("git log --simplify-by-decoration --decorate --pretty=oneline \"HEAD\"");
-        var regex = Pattern.compile("tag: (v\\d+\\.\\d+\\.\\d+)");
-        var matcher = regex.matcher(result);
-        if (!matcher.matches()) {
-            return "1.0.0";
-        } else {
-            return matcher.group(1);
+        if (_version != null) {
+            return _version;
         }
+        var regex = Pattern.compile(".*tag\\: v(\\d+\\.\\d+\\.\\d+).*");
+        var result = Cmd.run("git log --simplify-by-decoration --decorate --pretty=oneline \"HEAD\"");
+        var lines = result.split("\n");
+        for (var line: lines) {
+          var matcher = regex.matcher(line);
+          if (matcher.matches()) {
+              _version = matcher.group(1);
+              return _version;
+          }
+        }
+        _version = "1.0.0";
+        return _version;
+    }
+
+    public String getProjectJarName() {
+        return getProjectName() + "-" + getProjectVersion() + ".jar";
     }
 }
 

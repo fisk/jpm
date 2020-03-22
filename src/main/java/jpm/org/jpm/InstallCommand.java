@@ -16,17 +16,33 @@ public class InstallCommand {
     private File _mainJar;
 
     public void run() {
+        if (!_project.getBuildPath().resolve(_project.getProjectJarName()).toFile().exists()) {
+            new BuildCommand().run();
+        }
         installLibs();
         installLauncher();
+    }
+
+    private void copyJar(Path src, Path dst, String fileName) {
+        System.out.println("Copying " + src + " to " + dst);
+        var sharePath = _repo.getSharePath(_project);
+        var shareLib = sharePath.resolve("lib");
+        shareLib.toFile().mkdirs();
+        try {
+            Files.copy(src, dst, StandardCopyOption.REPLACE_EXISTING);
+            var shareLibPath = shareLib.resolve(fileName);
+            if (shareLibPath.toFile().exists()) {
+                shareLibPath.toFile().delete();
+            }
+            Files.createSymbolicLink(shareLibPath, dst);
+        } catch (IOException e) {
+            throw new RuntimeException("Could not install: ", e);
+        }
     }
 
     private void installLibs() {
         var finder = ModuleFinder.of(_project.getLibraryPath());
         String mainModule = _project.getProjectName();
-        var sharePath = _repo.getSharePath(_project);
-        var shareLib = sharePath.resolve("lib");
-        shareLib.toFile().mkdirs();
-        System.out.println("Copying to " + _repo.getLibraryPath());
         for (var module: finder.findAll()) {
             var descriptor = module.descriptor();
             var name = descriptor.name();
@@ -38,21 +54,16 @@ public class InstallCommand {
             fileName += ".jar";
             var src = Paths.get(module.location().get());
             var dst = _repo.getLibraryPath().resolve(fileName);
-            System.out.println("Copying from " + src + " to " + dst);
-            try {
-                Files.copy(src, dst, StandardCopyOption.REPLACE_EXISTING);
-                var shareLibPath = shareLib.resolve(fileName);
-                if (shareLibPath.toFile().exists()) {
-                  shareLibPath.toFile().delete();
-                }
-                Files.createSymbolicLink(shareLibPath, dst);
-            } catch (IOException e) {
-                throw new RuntimeException("Could not install: ", e);
-            }
+            copyJar(src, dst, fileName);
             if (mainModule.equals(name)) {
                 _mainJar = dst.toFile();
             }
         }
+        var targetJar = _project.getProjectJarName();
+        var src = _project.getBuildPath().resolve(targetJar);
+        var dst = _repo.getLibraryPath().resolve(targetJar);
+        _mainJar = dst.toFile();
+        copyJar(src, dst, targetJar);
     }
 
     private void installLauncher() {

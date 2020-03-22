@@ -52,7 +52,6 @@ public class DependencyDetector implements ModuleInfoParser.ModuleVisitor {
             var descriptor = module.descriptor();
             var name = descriptor.name();
             var version = descriptor.rawVersion();
-            System.out.println(name + ":" + version);
             if (version.isPresent()) {
                 table.put(name, version.get());
             }

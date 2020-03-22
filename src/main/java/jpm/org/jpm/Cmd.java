@@ -7,6 +7,7 @@ import java.io.InputStreamReader;
 public class Cmd {
     public static String run(String cmd) {
         var processBuilder = new ProcessBuilder();
+        System.out.println("$ " + cmd);
         processBuilder.command("sh", "-c", cmd);
         try {
             var process = processBuilder.start();
