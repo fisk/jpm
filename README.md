@@ -3,7 +3,7 @@
 This is a package manager for Java. The main objective is to avoid redundant configuration as much as possible.
 A typical project has no configuration file describing dependencies, versions, etc. Yet these things all exist.
 The version is stored as tags in the version control system, and dependencies are stated in module-info.java files.
-There is no need to state them again.
+There is no need to state them again. Git tags of the format v<major>.<minor>.<patch> are recognized as versions in the semantic versioning scheme.
 
 The JAR files that comprise the dependencies have versions embedded in them, either in the file name, or embedded in
 the --module-version of the JAR file. These are the versions of the dependencies.
