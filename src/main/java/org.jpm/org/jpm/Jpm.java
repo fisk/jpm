@@ -34,8 +34,8 @@ public class Jpm {
         case "uninstall":
             uninstall();
             break;
-        case "download":
-            download();
+        case "get":
+            get();
             break;
         default:
             help();
@@ -53,13 +53,17 @@ public class Jpm {
         new BuildCommand().run();
     }
 
-    private void download() {
+    private void get() {
         String version = null;
-        switch (_args[_index++]) {
-        case "--version":
-            version = _args[_index++];
-            break;
+        String module = _args[_index++];
+        while (_index < _args.length) {
+          switch (_args[_index++]) {
+            case "--version":
+              version = _args[_index++];
+              break;
+          }
         }
+        new GetCommand(module, version).run();
     }
 
     private void install() {

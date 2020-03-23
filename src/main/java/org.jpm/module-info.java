@@ -4,4 +4,5 @@ module org.jpm {
     requires org.objectweb.asm;
     requires org.objectweb.asm.tree;
     requires org.objectweb.asm.util;
+    requires commons.net;
 }

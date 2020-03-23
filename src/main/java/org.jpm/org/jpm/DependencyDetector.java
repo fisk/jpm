@@ -27,6 +27,12 @@ public class DependencyDetector implements ModuleInfoParser.ModuleVisitor {
         findSourceModules();
         findBinaryModules(ModuleFinder.of(_project.getLibraryPath()));
         findBinaryModules(ModuleFinder.ofSystem());
+        for (var dependency: _dependencies) {
+            if (dependency.getVersion() == null) {
+                // Not downloaded yet; acquire it.
+                new GetCommand(dependency.getName(), null);
+            }
+        }
     }
 
     private void findSourceModules() {
