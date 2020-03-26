@@ -1,8 +1,8 @@
 package org.jpm;
 
-import java.lang.module.ModuleFinder;
-import java.util.Set;
-import java.util.regex.Pattern;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
 
 public class Jpm {
     private String[] _args;
@@ -37,6 +37,9 @@ public class Jpm {
         case "get":
             get();
             break;
+        case "publish":
+            publish();
+            break;
         default:
             help();
             break;
@@ -64,6 +67,14 @@ public class Jpm {
           }
         }
         new GetCommand(module, version).run();
+    }
+
+    private void publish() {
+        var jars = new ArrayList<Path>();
+        while (_index < _args.length) {
+            jars.add(Paths.get(_args[_index++]).toAbsolutePath());
+        }
+        new PublishCommand(jars).run();
     }
 
     private void install() {

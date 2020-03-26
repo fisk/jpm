@@ -38,21 +38,23 @@ public class BuildCommand {
             reader.accept(classNode, 0);
             for (var method: classNode.methods) {
                 if (!method.name.equals("main")) {
-                    return false;
+                    continue;
                 }
                 if (method.access != (Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC)) {
-                  return false;
+                    continue;
                 }
                 return true;
             }
-        } catch (Exception e) {}
+        } catch (Exception e) {
+            System.out.println("Exception at " + path + ": " + e);
+        }
         return false;
     }
 
     public String getMainClass(List<Path> classFiles) {
         var moduleClassPath = _project.getBuildPath().resolve(_project.getProjectName());
         var pool = Executors.newCachedThreadPool();
-        for (var file : classFiles) {
+        for (var file: classFiles) {
             pool.submit(() -> {
                 if (getMainClass(file)) {
                     _mainClass = moduleClassPath.relativize(file).toString().replaceAll("/", ".");
@@ -86,6 +88,12 @@ public class BuildCommand {
     public void run() {
         String name = _project.getProjectName();
         String version = _project.getProjectVersion();
+        for (var dep: _deps.getDependencies()) {
+            System.out.println("Dependency: " + dep.getName());
+            if (dep.getVersion() == null) {
+                new GetCommand(dep.getName(), null).run();
+            }
+        }
         Cmd.run("javac -d build --module-path lib --module-source-path src/main/java src/main/java/**/*.java --module " + name + " -source 11");
         String mainClass = getMainClass();
         Cmd.run("jar -c --module-version=" + version + " --file=build/" + name + "-" + version + ".jar --main-class=" + mainClass + " -C build/" + name + " .");

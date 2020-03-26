@@ -50,7 +50,12 @@ public class Project {
     }
 
     public Path getModulePath() {
-        return getSourcePath().toFile().listFiles()[0].toPath();
+        for (var file: getSourcePath().toFile().listFiles()) {
+            if (!file.getName().startsWith(".")) {
+                return file.toPath();
+            }
+        }
+        return null;
     }
 
     public String getProjectName() {

@@ -28,15 +28,11 @@ public class GetCommand {
         boolean error = false;
         var ftp = new FTPClient();
         try {
-            String server = "localhost"; // For now...
-            int port = 21;
-            String user = "ftp_user";
-            String pass = "jpm";
-            ftp.connect(server, port);
-            ftp.login(user, pass);
+            ftp.connect(FTPConfig._host, FTPConfig._port);
+            ftp.login(FTPConfig._user, FTPConfig._password);
             ftp.enterLocalPassiveMode();
             ftp.setFileType(FTP.BINARY_FILE_TYPE);
-            System.out.println("Connected to " + server + ".");
+            System.out.println("Connected to " + FTPConfig._host + ".");
             System.out.print(ftp.getReplyString());
             int reply = ftp.getReplyCode();
             if (!FTPReply.isPositiveCompletion(reply)) {
@@ -64,7 +60,6 @@ public class GetCommand {
                         continue;
                     }
                     String versionRaw = matcher.group(2);
-                    System.out.println("Module: " + module + ", version: " + versionRaw);
                     var version = Version.parse(versionRaw);
                     if (latestVersion == null || version.compareTo(latestVersion) > 0) {
                         latestVersion = version;
@@ -76,9 +71,10 @@ public class GetCommand {
             var jarName = _module + "-" + selectedVersion + ".jar";
             var remoteFileName = "jpm/" + jarName;
             var localFile = _project.getLibraryPath().resolve(jarName).toFile();
-            var os = new BufferedOutputStream(new FileOutputStream(localFile));
-            boolean success = ftp.retrieveFile(remoteFileName, os);
-            os.close();
+            System.out.println("Downloading " + remoteFileName + " as " + localFile);
+            try (var os = new BufferedOutputStream(new FileOutputStream(localFile))) {
+                ftp.retrieveFile(remoteFileName, os);
+            }
 
             ftp.logout();
         } catch (IOException e) {
