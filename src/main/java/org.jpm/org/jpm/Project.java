@@ -30,7 +30,8 @@ public class Project {
         _buildPath = _projectPath.resolve("build");
         _libPath = _projectPath.resolve("lib");
         _buildPath.toFile().mkdirs();
-        _libPath.toFile().mkdirs();
+        _libPath.resolve("main").toFile().mkdirs();
+        _libPath.resolve("transitive").toFile().mkdirs();
     }
 
     public Path getProjectPath() {

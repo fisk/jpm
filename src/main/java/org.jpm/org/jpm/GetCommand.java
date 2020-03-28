@@ -19,9 +19,12 @@ public class GetCommand {
 
     private Pattern _modulePattern = Pattern.compile("(.*)-(\\d+\\.\\d+\\.\\d+)\\.jar");
 
-    public GetCommand(String module, String version) {
+    private String _libType;
+
+    public GetCommand(String module, String version, String libType) {
         _module = module;
         _version = version;
+        _libType = libType;
     }
 
     public void run() {
@@ -32,8 +35,6 @@ public class GetCommand {
             ftp.login(FTPConfig._user, FTPConfig._password);
             ftp.enterLocalPassiveMode();
             ftp.setFileType(FTP.BINARY_FILE_TYPE);
-            System.out.println("Connected to " + FTPConfig._host + ".");
-            System.out.print(ftp.getReplyString());
             int reply = ftp.getReplyCode();
             if (!FTPReply.isPositiveCompletion(reply)) {
                 ftp.disconnect();
@@ -46,7 +47,7 @@ public class GetCommand {
             if (_version == null) {
                 var files = ftp.listFiles("jpm");
                 Version latestVersion = null;
-                for (var file : files) {
+                for (var file: files) {
                     if (file.isDirectory()) {
                         continue;
                     }
@@ -70,7 +71,7 @@ public class GetCommand {
 
             var jarName = _module + "-" + selectedVersion + ".jar";
             var remoteFileName = "jpm/" + jarName;
-            var localFile = _project.getLibraryPath().resolve(jarName).toFile();
+            var localFile = _project.getLibraryPath().resolve(_libType).resolve(jarName).toFile();
             System.out.println("Downloading " + remoteFileName + " as " + localFile);
             try (var os = new BufferedOutputStream(new FileOutputStream(localFile))) {
                 ftp.retrieveFile(remoteFileName, os);
@@ -88,7 +89,6 @@ public class GetCommand {
                     // do nothing
                 }
             }
-            System.out.println("Disconnected");
         }
     }
 }

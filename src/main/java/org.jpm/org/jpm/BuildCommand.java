@@ -1,22 +1,23 @@
 package org.jpm;
 
+import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.jar.JarFile;
 import java.util.regex.Pattern;
 
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.ClassNode;
-import org.objectweb.asm.tree.InnerClassNode;
-import org.objectweb.asm.tree.InsnList;
-import org.objectweb.asm.tree.MethodNode;
 
 public class BuildCommand {
     private Project _project;
@@ -85,16 +86,111 @@ public class BuildCommand {
         return _mainClass;
     }
 
-    public void run() {
+    public String createJpmFileString() {
         String name = _project.getProjectName();
         String version = _project.getProjectVersion();
+        StringBuilder str = new StringBuilder();
+        str.append("{\n");
+        str.append("    module: \"" + name + "-" + version + "\"\n");
+        str.append("    dependencies: [\n");
+        for (var dependency : _deps.getDependencies()) {
+            String dependencyName = dependency.getName();
+            String dependencyVersion = dependency.getVersion();
+            if (dependencyVersion == null) {
+                throw new RuntimeException("Dependency version can't be null for " + dependencyName);
+            }
+            str.append("        \"" + dependencyName + "-" + dependencyVersion + "\"\n");
+        }
+        str.append("    ]\n");
+        str.append("}\n");
+        return str.toString();
+    }
+
+    public void createJpmFile() {
+        Path buildPath = _project.getBuildPath();
+        Path moduleBuildPath = buildPath.resolve(_project.getProjectName());
+        Path jpmPath = moduleBuildPath.resolve("META-INF").resolve("jpm");
+        Path jpmFilePath = jpmPath.resolve("main.jpm");
+        jpmPath.toFile().mkdirs();
+        try {
+            Files.write(jpmFilePath, createJpmFileString().getBytes());
+        } catch (IOException e) {
+            throw new RuntimeException("Could not create JPM file: ", e);
+        }
+    }
+
+    public void downloadDependencies() {
         for (var dep: _deps.getDependencies()) {
             System.out.println("Dependency: " + dep.getName());
             if (dep.getVersion() == null) {
-                new GetCommand(dep.getName(), null).run();
+                new GetCommand(dep.getName(), null, "main").run();
             }
         }
-        Cmd.run("javac -d build --module-path lib --module-source-path src/main/java src/main/java/**/*.java --module " + name + " -source 11");
+        _deps = new DependencyDetector(_project);
+    }
+
+    public void downloadTransitiveDependencies(Path jarFilePath) throws IOException {
+        var jpmPattern = Pattern.compile(".*dependencies: \\[(.*)\\].*", Pattern.DOTALL);
+        var jarFile = new JarFile(jarFilePath.toFile());
+        var jpmEntry = jarFile.getEntry("META-INF/jpm/main.jpm");
+        if (jpmEntry == null) {
+            return;
+        }
+        var jpmStream = jarFile.getInputStream(jpmEntry);
+
+        var jpmStr = new StringBuilder();
+        try (var reader = new BufferedReader(new InputStreamReader(jpmStream, Charset.forName(StandardCharsets.UTF_8.name())))) {
+            int c = 0;
+            while ((c = reader.read()) != -1) {
+                jpmStr.append((char) c);
+            }
+        }
+
+        var jpmMatcher = jpmPattern.matcher(jpmStr.toString());
+        if (!jpmMatcher.matches()) {
+            return;
+        }
+
+        var jpmDepsStr = jpmMatcher.group(1);
+        jpmDepsStr = jpmDepsStr.replaceAll("\n", "");
+        jpmDepsStr = jpmDepsStr.replaceAll(" ", "");
+
+        var jpmDeps = jpmDepsStr.split(",");
+
+        for (var jpmDep: jpmDeps) {
+            if (!jpmDep.contains("-")) {
+                continue;
+            }
+            jpmDep = jpmDep.substring(1, jpmDep.length() - 1);
+            var jpmDepComponents = jpmDep.split("-");
+            var jpmName = jpmDepComponents[0];
+            var jpmVersion = jpmDepComponents[1];
+            System.out.println("Transitive dependency: " + jpmName + "@" + jpmVersion);
+            new GetCommand(jpmName, jpmVersion, "transitive").run();
+            var jpmPath = _project.getLibraryPath().resolve("transitive/" + jpmName + "-" + jpmVersion + ".jar");
+            downloadTransitiveDependencies(jpmPath);
+        }
+    }
+
+    public void downloadTransitiveDependencies() {
+        try  {
+            for (var dep: _deps.getDependencies()) {
+                if (dep.getBinaryPath() != null) {
+                    downloadTransitiveDependencies(dep.getBinaryPath());
+                }
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Failed getting transitive dependencies: ", e);
+        }
+    }
+
+    public void run() {
+        String name = _project.getProjectName();
+        String version = _project.getProjectVersion();
+        downloadDependencies();
+        downloadTransitiveDependencies();
+        createJpmFile();
+        Cmd.run("javac -d build --module-path lib/main:lib/transitive --module-source-path src/main/java src/main/java/**/*.java --module " + name + " -source 11");
         String mainClass = getMainClass();
         Cmd.run("jar -c --module-version=" + version + " --file=build/" + name + "-" + version + ".jar --main-class=" + mainClass + " -C build/" + name + " .");
         System.out.println(_deps.getDependencies());

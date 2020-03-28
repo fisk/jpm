@@ -19,7 +19,8 @@ public class InstallCommand {
         if (!_project.getBuildPath().resolve(_project.getProjectJarName()).toFile().exists()) {
             new BuildCommand().run();
         }
-        installLibs();
+        installLibs("main");
+        installLibs("transitive");
         installLauncher();
     }
 
@@ -40,8 +41,8 @@ public class InstallCommand {
         }
     }
 
-    private void installLibs() {
-        var finder = ModuleFinder.of(_project.getLibraryPath());
+    private void installLibs(String libPath) {
+        var finder = ModuleFinder.of(_project.getLibraryPath().resolve(libPath));
         String mainModule = _project.getProjectName();
         for (var module: finder.findAll()) {
             var descriptor = module.descriptor();

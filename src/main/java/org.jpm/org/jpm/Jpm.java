@@ -58,15 +58,20 @@ public class Jpm {
 
     private void get() {
         String version = null;
-        String module = _args[_index++];
-        while (_index < _args.length) {
-          switch (_args[_index++]) {
-            case "--version":
-              version = _args[_index++];
+        for (;;) {
+          String module = _args[_index++];
+          if (_index < _args.length) {
+            switch (_args[_index++]) {
+              case "--version":
+                version = _args[_index++];
+                break;
+            }
+          }
+          new GetCommand(module, version, "main").run();
+          if (_index == _args.length) {
               break;
           }
         }
-        new GetCommand(module, version).run();
     }
 
     private void publish() {

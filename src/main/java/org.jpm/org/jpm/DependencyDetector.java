@@ -8,6 +8,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.regex.Pattern;
 
 public class DependencyDetector implements ModuleInfoParser.ModuleVisitor {
     private List<Dependency> _dependencies = new ArrayList<>();
@@ -25,14 +26,8 @@ public class DependencyDetector implements ModuleInfoParser.ModuleVisitor {
     public DependencyDetector(Project project) {
         _project = project;
         findSourceModules();
-        findBinaryModules(ModuleFinder.of(_project.getLibraryPath()));
-        findBinaryModules(ModuleFinder.ofSystem());
-        for (var dependency: _dependencies) {
-            if (dependency.getVersion() == null) {
-                // Not downloaded yet; acquire it.
-                new GetCommand(dependency.getName(), null);
-            }
-        }
+        findBinaryModules(ModuleFinder.of(_project.getLibraryPath().resolve("main")), false);
+        findBinaryModules(ModuleFinder.ofSystem(), true);
     }
 
     private void findSourceModules() {
@@ -52,21 +47,34 @@ public class DependencyDetector implements ModuleInfoParser.ModuleVisitor {
         }
     }
 
-    private void findBinaryModules(ModuleFinder finder) {
-        var table = new HashMap<String, String>();
+    private void findBinaryModules(ModuleFinder finder, boolean system) {
+        var versionTable = new HashMap<String, String>();
+        var pathTable = new HashMap<String, Path>();
         for (var module: finder.findAll()) {
             var descriptor = module.descriptor();
             var name = descriptor.name();
             var version = descriptor.rawVersion();
             if (version.isPresent()) {
-                table.put(name, version.get());
+                versionTable.put(name, version.get());
             }
+            pathTable.put(name, Paths.get(module.location().get()));
         }
 
         for (var dependency: _dependencies) {
-            String version = table.get(dependency.getName());
+            String version = versionTable.get(dependency.getName());
+            Path path = pathTable.get(dependency.getName());
             if (version != null) {
                 dependency.setVersion(version);
+            }
+            if (path != null && !system) {
+                dependency.setBinaryPath(path);
+                if (version == null) {
+                    var pattern = Pattern.compile(".*-(\\d+\\.\\d+\\.\\d+)\\.jar");
+                    var matcher = pattern.matcher(path.getFileName().toString());
+                    if (matcher.matches()) {
+                        dependency.setVersion(matcher.group(1));
+                    }
+                }
             }
         }
     }
