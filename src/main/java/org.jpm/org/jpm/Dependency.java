@@ -6,6 +6,7 @@ public class Dependency {
     private String _name;
     private String _version;
     private Path _binaryPath;
+    private boolean _isSystem;
 
     public Dependency(String name) {
         _name = name;
@@ -17,6 +18,14 @@ public class Dependency {
 
     public String getVersion() {
         return _version;
+    }
+
+    public boolean isSystem() {
+        return _isSystem;
+    }
+
+    public void setIsSystem(boolean isSystem) {
+        _isSystem = isSystem;
     }
 
     public void setVersion(String version) {

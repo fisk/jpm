@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -28,6 +29,7 @@ public class DependencyDetector implements ModuleInfoParser.ModuleVisitor {
         findSourceModules();
         findBinaryModules(ModuleFinder.of(_project.getLibraryPath().resolve("main")), false);
         findBinaryModules(ModuleFinder.ofSystem(), true);
+        findJpmModules();
     }
 
     private void findSourceModules() {
@@ -47,9 +49,29 @@ public class DependencyDetector implements ModuleInfoParser.ModuleVisitor {
         }
     }
 
+    private void findJpmModules() {
+        var versionTable = new HashMap<String, String>();
+        try {
+            var jpmPath = _project.getResourcePath().resolve("main.jpm");
+            String jpmString = new String(Files.readAllBytes(jpmPath));
+            var jpmFile = JpmFile.fromFile(jpmString);
+            for (var jpmDep: jpmFile.getMainDependencies()) {
+                versionTable.putIfAbsent(jpmDep.getName(), jpmDep.getVersion());
+            }
+        } catch (Exception e) {}
+
+        for (var dependency : _dependencies) {
+            String version = versionTable.get(dependency.getName());
+            if (version != null && dependency.getVersion() == null) {
+                dependency.setVersion(version);
+            }
+        }
+    }
+
     private void findBinaryModules(ModuleFinder finder, boolean system) {
         var versionTable = new HashMap<String, String>();
         var pathTable = new HashMap<String, Path>();
+        var isSystemTable = new HashSet<String>();
         for (var module: finder.findAll()) {
             var descriptor = module.descriptor();
             var name = descriptor.name();
@@ -58,6 +80,9 @@ public class DependencyDetector implements ModuleInfoParser.ModuleVisitor {
                 versionTable.put(name, version.get());
             }
             pathTable.put(name, Paths.get(module.location().get()));
+            if (system) {
+                isSystemTable.add(name);
+            }
         }
 
         for (var dependency: _dependencies) {
@@ -75,6 +100,9 @@ public class DependencyDetector implements ModuleInfoParser.ModuleVisitor {
                         dependency.setVersion(matcher.group(1));
                     }
                 }
+            }
+            if (isSystemTable.contains(dependency.getName())) {
+                dependency.setIsSystem(true);
             }
         }
     }

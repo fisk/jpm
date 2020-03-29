@@ -113,7 +113,9 @@ public class BuildCommand {
         Path jpmFilePath = jpmPath.resolve("main.jpm");
         jpmPath.toFile().mkdirs();
         try {
-            Files.write(jpmFilePath, createJpmFileString().getBytes());
+            String jpmFileString = createJpmFileString();
+            Files.write(jpmFilePath, jpmFileString.getBytes());
+            Files.write(_project.getResourcePath().resolve("main.jpm"), jpmFileString.getBytes());
         } catch (IOException e) {
             throw new RuntimeException("Could not create JPM file: ", e);
         }
@@ -122,7 +124,7 @@ public class BuildCommand {
     public void downloadDependencies() {
         for (var dep: _deps.getDependencies()) {
             System.out.println("Dependency: " + dep.getName());
-            if (dep.getVersion() == null) {
+            if (dep.getBinaryPath() == null && !dep.isSystem()) {
                 new GetCommand(dep.getName(), null, "main").run();
             }
         }
@@ -130,7 +132,6 @@ public class BuildCommand {
     }
 
     public void downloadTransitiveDependencies(Path jarFilePath) throws IOException {
-        var jpmPattern = Pattern.compile(".*dependencies: \\[(.*)\\].*", Pattern.DOTALL);
         var jarFile = new JarFile(jarFilePath.toFile());
         var jpmEntry = jarFile.getEntry("META-INF/jpm/main.jpm");
         if (jpmEntry == null) {
@@ -146,28 +147,9 @@ public class BuildCommand {
             }
         }
 
-        var jpmMatcher = jpmPattern.matcher(jpmStr.toString());
-        if (!jpmMatcher.matches()) {
-            return;
-        }
-
-        var jpmDepsStr = jpmMatcher.group(1);
-        jpmDepsStr = jpmDepsStr.replaceAll("\n", "");
-        jpmDepsStr = jpmDepsStr.replaceAll(" ", "");
-
-        var jpmDeps = jpmDepsStr.split(",");
-
-        for (var jpmDep: jpmDeps) {
-            if (!jpmDep.contains("-")) {
-                continue;
-            }
-            jpmDep = jpmDep.substring(1, jpmDep.length() - 1);
-            var jpmDepComponents = jpmDep.split("-");
-            var jpmName = jpmDepComponents[0];
-            var jpmVersion = jpmDepComponents[1];
-            System.out.println("Transitive dependency: " + jpmName + "@" + jpmVersion);
-            new GetCommand(jpmName, jpmVersion, "transitive").run();
-            var jpmPath = _project.getLibraryPath().resolve("transitive/" + jpmName + "-" + jpmVersion + ".jar");
+        for (var jpmDep: JpmFile.fromFile(jpmStr.toString()).getMainDependencies()) {
+            new GetCommand(jpmDep.getName(), jpmDep.getName(), "transitive").run();
+            var jpmPath = _project.getLibraryPath().resolve("transitive/" + jpmDep.getName() + "-" + jpmDep.getVersion() + ".jar");
             downloadTransitiveDependencies(jpmPath);
         }
     }

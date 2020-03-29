@@ -21,17 +21,20 @@ public class Project {
 
     private Path _projectPath;
     private Path _sourcePath;
+    private Path _resourcePath;
     private Path _buildPath;
     private Path _libPath;
 
     public Project() {
         _projectPath = calculateProjectPath();
         _sourcePath = _projectPath.resolve("src/main/java");
+        _resourcePath = _projectPath.resolve("src/main/resources");
         _buildPath = _projectPath.resolve("build");
         _libPath = _projectPath.resolve("lib");
         _buildPath.toFile().mkdirs();
         _libPath.resolve("main").toFile().mkdirs();
         _libPath.resolve("transitive").toFile().mkdirs();
+        _resourcePath.toFile().mkdirs();
     }
 
     public Path getProjectPath() {
@@ -40,6 +43,10 @@ public class Project {
 
     public Path getSourcePath() {
         return _sourcePath;
+    }
+
+    public Path getResourcePath() {
+      return _resourcePath;
     }
 
     public Path getBuildPath() {
