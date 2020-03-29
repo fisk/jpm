@@ -92,16 +92,21 @@ public class BuildCommand {
         StringBuilder str = new StringBuilder();
         str.append("{\n");
         str.append("    module: \"" + name + "-" + version + "\"\n");
-        str.append("    dependencies: [\n");
+        str.append("    dependencies: [");
+        int i = 0;
         for (var dependency : _deps.getDependencies()) {
             String dependencyName = dependency.getName();
             String dependencyVersion = dependency.getVersion();
             if (dependencyVersion == null) {
                 throw new RuntimeException("Dependency version can't be null for " + dependencyName);
             }
-            str.append("        \"" + dependencyName + "-" + dependencyVersion + "\"\n");
+            if (i++ != 0) {
+                str.append(",");
+            }
+            str.append("\n");
+            str.append("        \"" + dependencyName + "-" + dependencyVersion + "\"");
         }
-        str.append("    ]\n");
+        str.append("\n    ]\n");
         str.append("}\n");
         return str.toString();
     }
@@ -148,7 +153,12 @@ public class BuildCommand {
         }
 
         for (var jpmDep: JpmFile.fromFile(jpmStr.toString()).getMainDependencies()) {
-            new GetCommand(jpmDep.getName(), jpmDep.getName(), "transitive").run();
+            _deps = new DependencyDetector(_project);
+            var dep = _deps.getDependency(jpmDep.getName());
+            if (dep != null && (dep.isSystem() || dep.getBinaryPath() != null)) {
+                continue;
+            }
+            new GetCommand(jpmDep.getName(), jpmDep.getVersion(), "transitive").run();
             var jpmPath = _project.getLibraryPath().resolve("transitive/" + jpmDep.getName() + "-" + jpmDep.getVersion() + ".jar");
             downloadTransitiveDependencies(jpmPath);
         }
@@ -157,7 +167,7 @@ public class BuildCommand {
     public void downloadTransitiveDependencies() {
         try  {
             for (var dep: _deps.getDependencies()) {
-                if (dep.getBinaryPath() != null) {
+                if (dep.getBinaryPath() != null && !dep.isSystem()) {
                     downloadTransitiveDependencies(dep.getBinaryPath());
                 }
             }
@@ -171,6 +181,7 @@ public class BuildCommand {
         String version = _project.getProjectVersion();
         downloadDependencies();
         downloadTransitiveDependencies();
+        _deps = new DependencyDetector(_project);
         createJpmFile();
         Cmd.run("javac -d build --module-path lib/main:lib/transitive --module-source-path src/main/java src/main/java/**/*.java --module " + name + " -source 11");
         String mainClass = getMainClass();

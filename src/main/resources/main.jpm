@@ -1,10 +1,10 @@
 {
     module: "org.jpm-1.0.0"
     dependencies: [
-        "jdk.compiler-11.0.6"
-        "org.objectweb.asm-7.3.1"
-        "org.objectweb.asm.tree-7.3.1"
-        "org.objectweb.asm.util-7.3.1"
+        "jdk.compiler-11.0.6""org.objectweb.asm""org.objectweb.asm""org.objectweb.asm""org.objectweb.asm""org.objectweb.asm",
+        "org.objectweb.asm-7.3.1",
+        "org.objectweb.asm.tree-7.3.1",
+        "org.objectweb.asm.util-7.3.1",
         "commons.net-3.6.0"
     ]
 }

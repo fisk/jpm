@@ -7,9 +7,11 @@ public class Dependency {
     private String _version;
     private Path _binaryPath;
     private boolean _isSystem;
+    private boolean _isDirect;
 
-    public Dependency(String name) {
+    public Dependency(String name, boolean isDirect) {
         _name = name;
+        _isDirect = isDirect;
     }
 
     public String getName() {

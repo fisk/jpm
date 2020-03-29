@@ -14,13 +14,14 @@ public class InstallCommand {
     private Project _project = new Project();
     private Repository _repo = new Repository();
     private File _mainJar;
+    private DependencyDetector _deps;
 
     public void run() {
         if (!_project.getBuildPath().resolve(_project.getProjectJarName()).toFile().exists()) {
             new BuildCommand().run();
         }
-        installLibs("main");
-        installLibs("transitive");
+        _deps = new DependencyDetector(_project);
+        installLibs();
         installLauncher();
     }
 
@@ -47,10 +48,12 @@ public class InstallCommand {
         for (var module: finder.findAll()) {
             var descriptor = module.descriptor();
             var name = descriptor.name();
-            var version = descriptor.rawVersion();
+            var version = _deps.getVersion(name);
             var fileName = name;
-            if (version.isPresent()) {
-                fileName += "-" + version.get();
+            if (version != null) {
+                fileName += "-" + version;
+            } else {
+                throw new RuntimeException("Can't install " + name + " without version");
             }
             fileName += ".jar";
             var src = Paths.get(module.location().get());
@@ -60,6 +63,11 @@ public class InstallCommand {
                 _mainJar = dst.toFile();
             }
         }
+    }
+
+    private void installLibs() {
+        installLibs("main");
+        installLibs("transitive");
         var targetJar = _project.getProjectJarName();
         var src = _project.getBuildPath().resolve(targetJar);
         var dst = _repo.getLibraryPath().resolve(targetJar);
