@@ -114,4 +114,12 @@ public class DependencyDetector implements ModuleInfoParser.ModuleVisitor {
     public Dependency getDependency(String name) {
         return _dependenciesMap.get(name);
     }
+
+    public JpmFile getJpmFile() {
+        var jpmFile = JpmFile.createJpmFile(_project.getProjectName(), _project.getProjectVersion());
+        for (var dep: _dependencies) {
+            jpmFile.getMainDependencies().add(new JpmFile.JpmReference(dep.getName(), dep.getVersion()));
+        }
+        return jpmFile;
+    }
 }

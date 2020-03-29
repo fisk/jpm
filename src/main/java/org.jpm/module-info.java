@@ -5,4 +5,6 @@ module org.jpm {
     requires org.objectweb.asm.tree;
     requires org.objectweb.asm.util;
     requires commons.net;
+    requires sqlite.jdbc;
+    requires java.sql;
 }

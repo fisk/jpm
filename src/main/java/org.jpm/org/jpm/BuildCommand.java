@@ -29,8 +29,6 @@ public class BuildCommand {
         _deps = new DependencyDetector(_project);
     }
 
-    private Pattern _mainPattern = Pattern.compile(".*public static void main\\(java\\.lang\\.String\\[\\]\\).*");
-
     public boolean getMainClass(Path path) {
         try {
             var in = new FileInputStream(path.toString());
@@ -86,46 +84,6 @@ public class BuildCommand {
         return _mainClass;
     }
 
-    public String createJpmFileString() {
-        String name = _project.getProjectName();
-        String version = _project.getProjectVersion();
-        StringBuilder str = new StringBuilder();
-        str.append("{\n");
-        str.append("    module: \"" + name + "-" + version + "\"\n");
-        str.append("    dependencies: [");
-        int i = 0;
-        for (var dependency : _deps.getDependencies()) {
-            String dependencyName = dependency.getName();
-            String dependencyVersion = dependency.getVersion();
-            if (dependencyVersion == null) {
-                throw new RuntimeException("Dependency version can't be null for " + dependencyName);
-            }
-            if (i++ != 0) {
-                str.append(",");
-            }
-            str.append("\n");
-            str.append("        \"" + dependencyName + "-" + dependencyVersion + "\"");
-        }
-        str.append("\n    ]\n");
-        str.append("}\n");
-        return str.toString();
-    }
-
-    public void createJpmFile() {
-        Path buildPath = _project.getBuildPath();
-        Path moduleBuildPath = buildPath.resolve(_project.getProjectName());
-        Path jpmPath = moduleBuildPath.resolve("META-INF").resolve("jpm");
-        Path jpmFilePath = jpmPath.resolve("main.jpm");
-        jpmPath.toFile().mkdirs();
-        try {
-            String jpmFileString = createJpmFileString();
-            Files.write(jpmFilePath, jpmFileString.getBytes());
-            Files.write(_project.getResourcePath().resolve("main.jpm"), jpmFileString.getBytes());
-        } catch (IOException e) {
-            throw new RuntimeException("Could not create JPM file: ", e);
-        }
-    }
-
     public void downloadDependencies() {
         for (var dep: _deps.getDependencies()) {
             System.out.println("Dependency: " + dep.getName());
@@ -137,22 +95,11 @@ public class BuildCommand {
     }
 
     public void downloadTransitiveDependencies(Path jarFilePath) throws IOException {
-        var jarFile = new JarFile(jarFilePath.toFile());
-        var jpmEntry = jarFile.getEntry("META-INF/jpm/main.jpm");
-        if (jpmEntry == null) {
+        var jpmFile = JpmFile.fromJar(jarFilePath);
+        if (jpmFile == null) {
             return;
         }
-        var jpmStream = jarFile.getInputStream(jpmEntry);
-
-        var jpmStr = new StringBuilder();
-        try (var reader = new BufferedReader(new InputStreamReader(jpmStream, Charset.forName(StandardCharsets.UTF_8.name())))) {
-            int c = 0;
-            while ((c = reader.read()) != -1) {
-                jpmStr.append((char) c);
-            }
-        }
-
-        for (var jpmDep: JpmFile.fromFile(jpmStr.toString()).getMainDependencies()) {
+        for (var jpmDep: jpmFile.getMainDependencies()) {
             _deps = new DependencyDetector(_project);
             var dep = _deps.getDependency(jpmDep.getName());
             if (dep != null && (dep.isSystem() || dep.getBinaryPath() != null)) {
@@ -182,10 +129,15 @@ public class BuildCommand {
         downloadDependencies();
         downloadTransitiveDependencies();
         _deps = new DependencyDetector(_project);
-        createJpmFile();
+        var mainJpm = _project.getBuildPath().resolve(_project.getProjectName());
+        var jpmFile = _deps.getJpmFile();
+        jpmFile.installDir(mainJpm);
+        try {
+            Files.write(_project.getResourcePath().resolve("main.jpm"), jpmFile.toString().getBytes());
+        } catch (IOException e) {}
         Cmd.run("javac -d build --module-path lib/main:lib/transitive --module-source-path src/main/java src/main/java/**/*.java --module " + name + " -source 11");
         String mainClass = getMainClass();
-        Cmd.run("jar -c --module-version=" + version + " --file=build/" + name + "-" + version + ".jar --main-class=" + mainClass + " -C build/" + name + " .");
+        Cmd.run("jar --create --module-version=" + version + " --file=build/" + name + "-" + version + ".jar --main-class=" + mainClass + " -C build/" + name + " .");
         System.out.println(_deps.getDependencies());
     }
 }

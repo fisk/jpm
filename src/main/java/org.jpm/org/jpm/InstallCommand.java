@@ -25,7 +25,7 @@ public class InstallCommand {
         installLauncher();
     }
 
-    private void copyJar(Path src, Path dst, String fileName) {
+    private void installJar(Path src, Path dst, String fileName) {
         System.out.println("Copying " + src + " to " + dst);
         var sharePath = _repo.getSharePath(_project);
         var shareLib = sharePath.resolve("lib");
@@ -39,6 +39,11 @@ public class InstallCommand {
             Files.createSymbolicLink(shareLibPath, dst);
         } catch (IOException e) {
             throw new RuntimeException("Could not install: ", e);
+        }
+        try (JpmDatabase db = JpmDatabase.localDatabase()) {
+            var jpmFile = JpmFile.fromJar(src);
+            System.out.println("Adding jpm to database: " + jpmFile.getMain().getName() + "-" + jpmFile.getMain().getVersion());
+            db.addJpm(jpmFile);
         }
     }
 
@@ -58,7 +63,7 @@ public class InstallCommand {
             fileName += ".jar";
             var src = Paths.get(module.location().get());
             var dst = _repo.getLibraryPath().resolve(fileName);
-            copyJar(src, dst, fileName);
+            installJar(src, dst, fileName);
             if (mainModule.equals(name)) {
                 _mainJar = dst.toFile();
             }
@@ -72,7 +77,7 @@ public class InstallCommand {
         var src = _project.getBuildPath().resolve(targetJar);
         var dst = _repo.getLibraryPath().resolve(targetJar);
         _mainJar = dst.toFile();
-        copyJar(src, dst, targetJar);
+        installJar(src, dst, targetJar);
     }
 
     private void installLauncher() {
