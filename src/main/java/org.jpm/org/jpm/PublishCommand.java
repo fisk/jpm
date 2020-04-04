@@ -81,6 +81,11 @@ public class PublishCommand {
                 try (InputStream input = new FileInputStream(jar.toFile())) {
                     ftp.storeFile(remoteFileName, input);
                 }
+                try (JpmDatabase db = JpmDatabase.remoteDatabase()) {
+                    var jpmFile = JpmFile.fromJar(jar);
+                    System.out.println("Adding jpm to remote database: " + jpmFile.getMain().getName() + "-" + jpmFile.getMain().getVersion());
+                    db.addJpm(jpmFile);
+                }
             }
             ftp.logout();
         } catch (IOException e) {

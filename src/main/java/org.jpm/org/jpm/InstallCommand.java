@@ -42,7 +42,7 @@ public class InstallCommand {
         }
         try (JpmDatabase db = JpmDatabase.localDatabase()) {
             var jpmFile = JpmFile.fromJar(src);
-            System.out.println("Adding jpm to database: " + jpmFile.getMain().getName() + "-" + jpmFile.getMain().getVersion());
+            System.out.println("Adding jpm to local database: " + jpmFile.getMain().getName() + "-" + jpmFile.getMain().getVersion());
             db.addJpm(jpmFile);
         }
     }

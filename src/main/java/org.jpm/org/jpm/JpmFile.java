@@ -83,7 +83,7 @@ public class JpmFile {
             var jarFile = new JarFile(jarFilePath.toFile());
             var jpmEntry = jarFile.getEntry("META-INF/jpm/main.jpm");
             if (jpmEntry == null) {
-                var pattern = Pattern.compile("(.*)-(\\d+\\.\\d+\\.\\d)\\.jar");
+                var pattern = Pattern.compile("(.*)-(\\d+\\.\\d+\\.\\d+)\\.jar");
                 var matcher = pattern.matcher(jarFilePath.getFileName().toString());
                 if (matcher.matches()) {
                     var name = matcher.group(1);
@@ -104,7 +104,7 @@ public class JpmFile {
             }
             return fromFile(jpmStr.toString());
         } catch (Exception e) {
-            throw new RuntimeException("Could not install JPM file into " + jarFilePath);
+            throw new RuntimeException("Could not install JPM file into " + jarFilePath + ": " + e);
         }
     }
 

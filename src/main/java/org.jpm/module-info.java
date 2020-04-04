@@ -6,5 +6,6 @@ module org.jpm {
     requires org.objectweb.asm.util;
     requires commons.net;
     requires sqlite.jdbc;
+    requires mysql.connector.java;
     requires java.sql;
 }

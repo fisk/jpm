@@ -6,56 +6,58 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Properties;
+import java.util.TimeZone;
 import java.util.regex.Pattern;
 
 public class JpmDatabase implements AutoCloseable {
-    private Path _path;
     private Connection _connection;
 
-    public JpmDatabase(Path path) {
-        _path = path;
-        connect();
+    public JpmDatabase(String url, Properties info) {
+        connect(url, info);
     }
 
-    private void connect() {
+    private void connect(String url, Properties info) {
         try {
-            String url = "jdbc:sqlite:" + _path.toString();
-            _connection = DriverManager.getConnection(url);
+            if (info == null) {
+                _connection = DriverManager.getConnection(url);
+            } else {
+                _connection = DriverManager.getConnection(url, info);
+            }
             try (Statement stmt = _connection.createStatement()) {
                 stmt.execute("CREATE TABLE IF NOT EXISTS ARTIFACTS (\n" +
-                             "    NAME text NOT NULL,\n" +
+                             "    JPM_NAME varchar(255) NOT NULL,\n" +
                              "    VERSION_MAJOR integer,\n" +
                              "    VERSION_MINOR integer,\n" +
                              "    VERSION_PATCH integer,\n" +
-                             "    CONSTRAINT PK_NAME_VERSION PRIMARY KEY (NAME, VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH)\n" +
+                             "    CONSTRAINT PK_JPM_NAME_VERSION PRIMARY KEY (JPM_NAME, VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH)\n" +
                              ");");
-                stmt.execute("CREATE TABLE IF NOT EXISTS DEPENDENCIES (\n" +
-                             "    FROM_NAME text NOT NULL,\n" +
-                             "    FROM_VERSION_MAJOR integer,\n" +
-                             "    FROM_VERSION_MINOR integer,\n" +
-                             "    FROM_VERSION_PATCH integer,\n" +
-                             "    TO_NAME text NOT NULL,\n" +
-                             "    TO_VERSION_MAJOR integer,\n" +
-                             "    TO_VERSION_MINOR integer,\n" +
-                             "    TO_VERSION_PATCH integer,\n" +
-                             "    CONSTRAINT PK_FROM_TO_NAME_VERSION PRIMARY KEY (\n" +
-                             "        FROM_NAME, FROM_VERSION_MAJOR, FROM_VERSION_MINOR, FROM_VERSION_PATCH,\n" +
-                             "        TO_NAME, TO_VERSION_MAJOR, TO_VERSION_MINOR, TO_VERSION_PATCH\n" +
-                             "    )\n" +
-                             "    CONSTRAINT FK_FROM_NAME_VERSION FOREIGN KEY (\n" +
-                             "        FROM_NAME, FROM_VERSION_MAJOR, FROM_VERSION_MINOR, FROM_VERSION_PATCH\n" +
-                             "    ) REFERENCES ARTIFACTS(\n" +
-                             "        NAME, VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH\n" +
-                             "    )\n" +
-                             "    CONSTRAINT FK_TO_NAME_VERSION FOREIGN KEY (\n" +
-                             "        TO_NAME, TO_VERSION_MAJOR, TO_VERSION_MINOR, TO_VERSION_PATCH\n" +
-                             "    ) REFERENCES ARTIFACTS(\n" +
-                             "        NAME, VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH\n" +
-                             "    )" +
-                             ");");
+                stmt.execute("CREATE TABLE IF NOT EXISTS DEPENDENCIES (\n" + 
+                		     "    FROM_JPM_NAME varchar(255) NOT NULL,\n" + 
+                		     "    FROM_VERSION_MAJOR integer,\n" + 
+                		     "    FROM_VERSION_MINOR integer,\n" + 
+                		     "    FROM_VERSION_PATCH integer,\n" + 
+                		     "    TO_JPM_NAME varchar(255) NOT NULL,\n" + 
+                		     "    TO_VERSION_MAJOR integer,\n" + 
+                		     "    TO_VERSION_MINOR integer,\n" + 
+                		     "    TO_VERSION_PATCH integer,\n" + 
+                		     "    CONSTRAINT PK_FROM_TO_JPM_NAME_VERSION PRIMARY KEY (\n" + 
+                		     "        FROM_JPM_NAME, FROM_VERSION_MAJOR, FROM_VERSION_MINOR, FROM_VERSION_PATCH,\n" + 
+                		     "        TO_JPM_NAME, TO_VERSION_MAJOR, TO_VERSION_MINOR, TO_VERSION_PATCH\n" + 
+                		     "    ),\n" + 
+                		     "    CONSTRAINT FK_FROM_JPM_NAME_VERSION FOREIGN KEY (\n" + 
+                		     "        FROM_JPM_NAME, FROM_VERSION_MAJOR, FROM_VERSION_MINOR, FROM_VERSION_PATCH\n" + 
+                		     "    ) REFERENCES ARTIFACTS(\n" + 
+                		     "        JPM_NAME, VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH\n" + 
+                		     "    ),\n" + 
+                		     "    CONSTRAINT FK_TO_JPM_NAME_VERSION FOREIGN KEY (\n" + 
+                		     "        TO_JPM_NAME, TO_VERSION_MAJOR, TO_VERSION_MINOR, TO_VERSION_PATCH\n" + 
+                		     "    ) REFERENCES ARTIFACTS(\n" + 
+                		     "        JPM_NAME, VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH\n" + 
+                		     "    )\n" + 
+	                         ");");
             }
         } catch (SQLException e) {
-            System.out.println(e.getMessage());
         }
     }
 
@@ -81,7 +83,7 @@ public class JpmDatabase implements AutoCloseable {
             patch = Integer.parseInt(matcher.group(3));
         } catch (Exception e) {
         }
-        String sql = "INSERT INTO ARTIFACTS(NAME, VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH) VALUES(?, ?, ?, ?)";
+        String sql = "INSERT INTO ARTIFACTS(JPM_NAME, VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH) VALUES(?, ?, ?, ?)";
         try (PreparedStatement pstmt = _connection.prepareStatement(sql)) {
             pstmt.setString(1, main.getName());
             pstmt.setInt(2, major);
@@ -111,8 +113,8 @@ public class JpmDatabase implements AutoCloseable {
                 dependencyPatch = Integer.parseInt(dependencyMatcher.group(3));
             } catch (Exception e) {
             }
-            String dependencySql = "INSERT INTO DEPENDENCIES(FROM_NAME, FROM_VERSION_MAJOR, FROM_VERSION_MINOR, FROM_VERSION_PATCH,\n" +
-                                   "                         TO_NAME, TO_VERSION_MAJOR, TO_VERSION_MINOR, TO_VERSION_PATCH)\n" +
+            String dependencySql = "INSERT INTO DEPENDENCIES(FROM_JPM_NAME, FROM_VERSION_MAJOR, FROM_VERSION_MINOR, FROM_VERSION_PATCH,\n" +
+                                   "                         TO_JPM_NAME, TO_VERSION_MAJOR, TO_VERSION_MINOR, TO_VERSION_PATCH)\n" +
                                    "            VALUES(?, ?, ?, ?, ?, ?, ?, ?)";
             try (PreparedStatement pstmt = _connection.prepareStatement(dependencySql)) {
                 pstmt.setString(1, main.getName());
@@ -131,8 +133,15 @@ public class JpmDatabase implements AutoCloseable {
 
     public static JpmDatabase localDatabase() {
         Repository repo = new Repository();
-        var path = repo.getRepositoryPath().resolve("jpm.db");
-        return new JpmDatabase(path);
+        var url = "jdbc:sqlite:" + repo.getRepositoryPath().resolve("jpm.db");
+        return new JpmDatabase(url, null);
+    }
+
+    public static JpmDatabase remoteDatabase() {
+        var path = "jdbc:mysql://" + MySQLConfig._host + "/" + MySQLConfig._database + "?user=" + MySQLConfig._user + "&password=" + MySQLConfig._password;
+        var info = new Properties();
+        info.put("serverTimezone", TimeZone.getDefault().getDisplayName(false, TimeZone.SHORT));
+        return new JpmDatabase(path, info);
     }
 
     public void close() {
