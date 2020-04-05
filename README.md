@@ -83,3 +83,14 @@ $ jpm install
 
 $ jpm publish jar_list
 * upload jpm-build jars to the central repository
+
+## Maven Compatibility
+
+JPM uses its own central repository, where the ID of a dependency is the module name and version. So what if JPM does not have your dependency yet, but it exists in maven?
+
+There is a separate project for mvn2jpm (https://github.com/fisk/mvn2jpm) to move maven dependencies to JPM.
+You use it like this:
+
+$ mvn2jpm group:artifact:version
+
+It downloads the transitive closure of dependencies from the provided list of roots, and publishes them to the JPM central repository. After that, you can add JPM dependencies simply to their resulting module names.
