@@ -1,19 +1,13 @@
 package org.jpm;
 
-import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.jar.JarFile;
-import java.util.regex.Pattern;
 
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.Opcodes;
@@ -84,50 +78,31 @@ public class BuildCommand {
         return _mainClass;
     }
 
-    public void downloadDependencies() {
-        for (var dep: _deps.getDependencies()) {
-            System.out.println("Dependency: " + dep.getName());
-            if (dep.getBinaryPath() == null && !dep.isSystem()) {
-                new GetCommand(dep.getName(), null, "main").run();
-            }
-        }
-        _deps = new DependencyDetector(_project);
-    }
-
-    public void downloadTransitiveDependencies(Path jarFilePath) throws IOException {
-        var jpmFile = JpmFile.fromJar(jarFilePath);
-        if (jpmFile == null) {
-            return;
-        }
-        for (var jpmDep: jpmFile.getMainDependencies()) {
-            _deps = new DependencyDetector(_project);
-            var dep = _deps.getDependency(jpmDep.getName());
-            if (dep != null && (dep.isSystem() || dep.getBinaryPath() != null)) {
-                continue;
-            }
-            new GetCommand(jpmDep.getName(), jpmDep.getVersion(), "transitive").run();
-            var jpmPath = _project.getLibraryPath().resolve("transitive/" + jpmDep.getName() + "-" + jpmDep.getVersion() + ".jar");
-            downloadTransitiveDependencies(jpmPath);
-        }
-    }
-
-    public void downloadTransitiveDependencies() {
-        try  {
-            for (var dep: _deps.getDependencies()) {
-                if (dep.getBinaryPath() != null && !dep.isSystem()) {
-                    downloadTransitiveDependencies(dep.getBinaryPath());
-                }
-            }
-        } catch (IOException e) {
-            throw new RuntimeException("Failed getting transitive dependencies: ", e);
-        }
-    }
-
     public void run() {
         String name = _project.getProjectName();
         String version = _project.getProjectVersion();
-        downloadDependencies();
-        downloadTransitiveDependencies();
+        var jpmDeps = new ArrayList<JpmFile>();
+        var jpm = _deps.getJpmFile();
+        try (var db = JpmDatabase.remoteDatabase()) {
+            for (var jpmRef: jpm.getMainDependencies()) {
+                var dep = _deps.getDependency(jpmRef.getName());
+                if (dep != null && dep.isSystem()) {
+                    continue;
+                }
+                JpmFile jpmDep = null;
+                if (jpmRef.getVersion() != null) {
+                    jpmDep = db.getJpm(jpmRef.getName(), jpmRef.getVersion());
+                } else {
+                    jpmDep = db.getJpm(jpmRef.getName());
+                }
+                if (jpmDep == null) {
+                    System.out.println("Unknown jpm: " + jpmRef.getName() + "-" + jpmRef.getVersion());
+                    throw new RuntimeException("Unknown jpm: " + jpmRef.getName() + "-" + jpmRef.getVersion());
+                }
+                jpmDeps.add(jpmDep);
+            }
+        }
+        new GetCommand(jpmDeps).run();
         _deps = new DependencyDetector(_project);
         var mainJpm = _project.getBuildPath().resolve(_project.getProjectName());
         var jpmFile = _deps.getJpmFile();

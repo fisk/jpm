@@ -1,12 +1,12 @@
 package org.jpm;
 
-import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.List;
 import java.util.Properties;
 import java.util.TimeZone;
 import java.util.regex.Pattern;
@@ -34,100 +34,125 @@ public class JpmDatabase implements AutoCloseable {
                              "    CONSTRAINT PK_JPM_NAME_VERSION PRIMARY KEY (JPM_NAME, VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH)\n" +
                              ");");
                 stmt.execute("CREATE TABLE IF NOT EXISTS DEPENDENCIES (\n" + 
-                            "    FROM_JPM_NAME varchar(255) NOT NULL,\n" + 
-                            "    FROM_VERSION_MAJOR integer,\n" + 
-                            "    FROM_VERSION_MINOR integer,\n" + 
-                            "    FROM_VERSION_PATCH integer,\n" + 
-                            "    TO_JPM_NAME varchar(255) NOT NULL,\n" + 
-                            "    TO_VERSION_MAJOR integer,\n" + 
-                            "    TO_VERSION_MINOR integer,\n" + 
-                            "    TO_VERSION_PATCH integer,\n" + 
-                            "    CONSTRAINT PK_FROM_TO_JPM_NAME_VERSION PRIMARY KEY (\n" + 
-                            "        FROM_JPM_NAME, FROM_VERSION_MAJOR, FROM_VERSION_MINOR, FROM_VERSION_PATCH,\n" + 
-                            "        TO_JPM_NAME, TO_VERSION_MAJOR, TO_VERSION_MINOR, TO_VERSION_PATCH\n" + 
-                            "    ),\n" + 
-                            "    CONSTRAINT FK_FROM_JPM_NAME_VERSION FOREIGN KEY (\n" + 
-                            "        FROM_JPM_NAME, FROM_VERSION_MAJOR, FROM_VERSION_MINOR, FROM_VERSION_PATCH\n" + 
-                            "    ) REFERENCES ARTIFACTS(\n" + 
-                            "        JPM_NAME, VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH\n" + 
-                            "    ),\n" + 
-                            "    CONSTRAINT FK_TO_JPM_NAME_VERSION FOREIGN KEY (\n" + 
-                            "        TO_JPM_NAME, TO_VERSION_MAJOR, TO_VERSION_MINOR, TO_VERSION_PATCH\n" + 
-                            "    ) REFERENCES ARTIFACTS(\n" + 
-                            "        JPM_NAME, VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH\n" + 
-                            "    )\n" + 
-                            ");");
+                             "    FROM_JPM_NAME varchar(255) NOT NULL,\n" + 
+                             "    FROM_VERSION_MAJOR integer,\n" + 
+                             "    FROM_VERSION_MINOR integer,\n" + 
+                             "    FROM_VERSION_PATCH integer,\n" + 
+                             "    TO_JPM_NAME varchar(255) NOT NULL,\n" + 
+                             "    TO_VERSION_MAJOR integer,\n" + 
+                             "    TO_VERSION_MINOR integer,\n" + 
+                             "    TO_VERSION_PATCH integer,\n" + 
+                             "    CONSTRAINT PK_FROM_TO_JPM_NAME_VERSION PRIMARY KEY (\n" + 
+                             "        FROM_JPM_NAME, FROM_VERSION_MAJOR, FROM_VERSION_MINOR, FROM_VERSION_PATCH,\n" + 
+                             "        TO_JPM_NAME, TO_VERSION_MAJOR, TO_VERSION_MINOR, TO_VERSION_PATCH\n" + 
+                             "    ),\n" + 
+                             "    CONSTRAINT FK_FROM_JPM_NAME_VERSION FOREIGN KEY (\n" + 
+                             "        FROM_JPM_NAME, FROM_VERSION_MAJOR, FROM_VERSION_MINOR, FROM_VERSION_PATCH\n" + 
+                             "    ) REFERENCES ARTIFACTS(\n" + 
+                             "        JPM_NAME, VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH\n" + 
+                             "    ),\n" + 
+                             "    CONSTRAINT FK_TO_JPM_NAME_VERSION FOREIGN KEY (\n" + 
+                             "        TO_JPM_NAME, TO_VERSION_MAJOR, TO_VERSION_MINOR, TO_VERSION_PATCH\n" + 
+                             "    ) REFERENCES ARTIFACTS(\n" + 
+                             "        JPM_NAME, VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH\n" + 
+                             "    )\n" + 
+                             ");");
             }
+            _connection.setAutoCommit(false);
         } catch (SQLException e) {
         }
     }
 
-    public void addJpm(JpmFile jpm) {
-        var main = jpm.getMain();
+    public void addJpms(List<JpmFile> jpms) {
         var pattern = Pattern.compile("(\\d+)\\.(\\d+)\\.(\\d+)");
-        int major = 0;
-        int minor = 0;
-        int patch = 0;
-        var matcher = pattern.matcher(main.getVersion());
-        if (!matcher.matches()) {
-            throw new RuntimeException("Invalid version");
-        }
-        try {
-            major = Integer.parseInt(matcher.group(1));
-        } catch (Exception e) {
-        }
-        try {
-            minor = Integer.parseInt(matcher.group(2));
-        } catch (Exception e) {
-        }
-        try {
-            patch = Integer.parseInt(matcher.group(3));
-        } catch (Exception e) {
-        }
-        String sql = "INSERT INTO ARTIFACTS(JPM_NAME, VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH) VALUES(?, ?, ?, ?);";
-        try (PreparedStatement pstmt = _connection.prepareStatement(sql)) {
-            pstmt.setString(1, main.getName());
-            pstmt.setInt(2, major);
-            pstmt.setInt(3, minor);
-            pstmt.setInt(4, patch);
-            pstmt.executeUpdate();
-        } catch (SQLException e) {
-        }
-        for (var dep: jpm.getMainDependencies()) {
-            String dependencyName = dep.getName();
-            int dependencyMajor = 0;
-            int dependencyMinor = 0;
-            int dependencyPatch = 0;
-            var dependencyMatcher = pattern.matcher(main.getVersion());
-            if (!dependencyMatcher.matches()) {
+        for (var jpm: jpms) {
+            var main = jpm.getMain();
+            int major = 0;
+            int minor = 0;
+            int patch = 0;
+            var matcher = pattern.matcher(main.getVersion());
+            if (!matcher.matches()) {
                 throw new RuntimeException("Invalid version");
             }
             try {
-                dependencyMajor = Integer.parseInt(dependencyMatcher.group(1));
+                major = Integer.parseInt(matcher.group(1));
             } catch (Exception e) {
             }
             try {
-                dependencyMinor = Integer.parseInt(dependencyMatcher.group(2));
+                minor = Integer.parseInt(matcher.group(2));
             } catch (Exception e) {
             }
             try {
-                dependencyPatch = Integer.parseInt(dependencyMatcher.group(3));
+                patch = Integer.parseInt(matcher.group(3));
             } catch (Exception e) {
             }
-            String dependencySql = "INSERT INTO DEPENDENCIES(FROM_JPM_NAME, FROM_VERSION_MAJOR, FROM_VERSION_MINOR, FROM_VERSION_PATCH,\n" +
-                                    "TO_JPM_NAME, TO_VERSION_MAJOR, TO_VERSION_MINOR, TO_VERSION_PATCH)\n" +
-                                    "VALUES(?, ?, ?, ?, ?, ?, ?, ?);";
-            try (PreparedStatement pstmt = _connection.prepareStatement(dependencySql)) {
+            String sql = "INSERT INTO ARTIFACTS(JPM_NAME, VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH) VALUES(?, ?, ?, ?);";
+            try (PreparedStatement pstmt = _connection.prepareStatement(sql)) {
                 pstmt.setString(1, main.getName());
                 pstmt.setInt(2, major);
                 pstmt.setInt(3, minor);
                 pstmt.setInt(4, patch);
-                pstmt.setString(5, dependencyName);
-                pstmt.setInt(6, dependencyMajor);
-                pstmt.setInt(7, dependencyMinor);
-                pstmt.setInt(8, dependencyPatch);
                 pstmt.executeUpdate();
             } catch (SQLException e) {
+            }
+        }
+        for (var jpm: jpms) {
+            var main = jpm.getMain();
+            int major = 0;
+            int minor = 0;
+            int patch = 0;
+            var matcher = pattern.matcher(main.getVersion());
+            if (!matcher.matches()) {
+                throw new RuntimeException("Invalid version");
+            }
+            try {
+                major = Integer.parseInt(matcher.group(1));
+            } catch (Exception e) {
+            }
+            try {
+                minor = Integer.parseInt(matcher.group(2));
+            } catch (Exception e) {
+            }
+            try {
+                patch = Integer.parseInt(matcher.group(3));
+            } catch (Exception e) {
+            }
+            for (var dep: jpm.getMainDependencies()) {
+                String dependencyName = dep.getName();
+                int dependencyMajor = 0;
+                int dependencyMinor = 0;
+                int dependencyPatch = 0;
+                var dependencyMatcher = pattern.matcher(dep.getVersion());
+                if (!dependencyMatcher.matches()) {
+                    throw new RuntimeException("Invalid version");
+                }
+                try {
+                    dependencyMajor = Integer.parseInt(dependencyMatcher.group(1));
+                } catch (Exception e) {
+                }
+                try {
+                    dependencyMinor = Integer.parseInt(dependencyMatcher.group(2));
+                } catch (Exception e) {
+                }
+                try {
+                    dependencyPatch = Integer.parseInt(dependencyMatcher.group(3));
+                } catch (Exception e) {
+                }
+                String sql = "INSERT INTO DEPENDENCIES(FROM_JPM_NAME, FROM_VERSION_MAJOR, FROM_VERSION_MINOR, FROM_VERSION_PATCH,\n" +
+                             "TO_JPM_NAME, TO_VERSION_MAJOR, TO_VERSION_MINOR, TO_VERSION_PATCH)\n" +
+                             "VALUES(?, ?, ?, ?, ?, ?, ?, ?);";
+                try (PreparedStatement pstmt = _connection.prepareStatement(sql)) {
+                    pstmt.setString(1, main.getName());
+                    pstmt.setInt(2, major);
+                    pstmt.setInt(3, minor);
+                    pstmt.setInt(4, patch);
+                    pstmt.setString(5, dependencyName);
+                    pstmt.setInt(6, dependencyMajor);
+                    pstmt.setInt(7, dependencyMinor);
+                    pstmt.setInt(8, dependencyPatch);
+                    pstmt.executeUpdate();
+                } catch (SQLException e) {
+                }
             }
         }
     }
@@ -184,7 +209,6 @@ public class JpmDatabase implements AutoCloseable {
             int resultPatch = rs.getInt(4);
             jpmFile = JpmFile.createJpmFile(resultName, "" + resultMajor + "." + resultMinor + "." + resultPatch);
         } catch (SQLException e) {
-            System.out.println(e);
         }
         sql = "SELECT TO_JPM_NAME, TO_VERSION_MAJOR, TO_VERSION_MINOR, TO_VERSION_PATCH FROM DEPENDENCIES " +
               "WHERE FROM_JPM_NAME=? AND FROM_VERSION_MAJOR=? AND FROM_VERSION_MINOR=? AND FROM_VERSION_PATCH=?;";
@@ -203,7 +227,6 @@ public class JpmDatabase implements AutoCloseable {
                 jpmFile.getMainDependencies().add(jpmFileDep);
             }
         } catch (SQLException e) {
-            System.out.println(e);
         }
         return jpmFile;
     }
@@ -222,7 +245,6 @@ public class JpmDatabase implements AutoCloseable {
             int resultPatch = rs.getInt(3);
             return getJpm(name, "" + resultMajor + "." + resultMinor + "." + resultPatch);
         } catch (SQLException e) {
-            System.out.println(e);
         }
         return null;
     }
@@ -230,6 +252,7 @@ public class JpmDatabase implements AutoCloseable {
     public void close() {
         try {
             if (_connection != null) {
+                _connection.commit();
                 _connection.close();
             }
         } catch (SQLException e) {

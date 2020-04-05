@@ -74,7 +74,6 @@ public class ModuleInfoParser {
             return trees.stream().map(ModuleHandler::qualifiedString).collect(toList());
         }
 
-        @SuppressWarnings("static-method")
         public void visitCompilationUnit(CompilationUnitTree node, TreeVisitor<?, ?> visitor) {
             for (var decl: node.getTypeDecls()) {
                 if (!(decl instanceof ModuleTree)) {
@@ -90,20 +89,20 @@ public class ModuleInfoParser {
             node.getDirectives().forEach(n -> accept(visitor, n));
         }
 
-        public void visitRequires(RequiresTree node, @SuppressWarnings("unused") TreeVisitor<?, ?> __) {
+        public void visitRequires(RequiresTree node, TreeVisitor<?, ?> __) {
             int modifiers = (node.isStatic()? ACC_STATIC: 0) | (node.isTransitive()? ACC_TRANSITIVE: 0);
             _moduleVisitor.visitRequires(modifiers, qualifiedString(node.getModuleName()));
         }
 
-        public void visitExports(ExportsTree node, @SuppressWarnings("unused") TreeVisitor<?, ?> __) {
+        public void visitExports(ExportsTree node, TreeVisitor<?, ?> __) {
             _moduleVisitor.visitExports(qualifiedString(node.getPackageName()), asList(node.getModuleNames()));
         }
 
-        public void visitUses(UsesTree node, @SuppressWarnings("unused") TreeVisitor<?, ?> __) {
+        public void visitUses(UsesTree node, TreeVisitor<?, ?> __) {
             _moduleVisitor.visitUses(qualifiedString(node.getServiceName()));
         }
 
-        public void visitProvides(ProvidesTree node, @SuppressWarnings("unused") TreeVisitor<?, ?> __) {
+        public void visitProvides(ProvidesTree node, TreeVisitor<?, ?> __) {
             _moduleVisitor.visitProvides(qualifiedString(node.getServiceName()), asList(node.getImplementationNames()));
         }
 

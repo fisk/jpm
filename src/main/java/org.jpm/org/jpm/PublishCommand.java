@@ -7,6 +7,7 @@ import java.io.UncheckedIOException;
 import java.lang.module.ModuleDescriptor;
 import java.lang.module.ModuleFinder;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
@@ -30,7 +31,6 @@ public class PublishCommand {
     private Pattern _modulePattern = Pattern.compile("(.*)-(\\d+\\.\\d+\\.\\d+)\\.jar");
 
     static ModuleDescriptor getModuleDescriptor(Path jar) {
-        ClassLoader cl = ClassLoader.getSystemClassLoader();
         try (JarFile jf = new JarFile(jar.toFile())) {
             JarEntry entry = jf.getJarEntry("module-info.class");
             try (InputStream in = jf.getInputStream(entry)) {
@@ -42,15 +42,13 @@ public class PublishCommand {
     }
 
     public void run() {
-        boolean error = false;
         var ftp = new FTPClient();
+        var jpms = new ArrayList<JpmFile>();
         try {
             ftp.connect(FTPConfig._host, FTPConfig._port);
             ftp.login(FTPConfig._user, FTPConfig._password);
             ftp.enterLocalPassiveMode();
             ftp.setFileType(FTP.BINARY_FILE_TYPE);
-            System.out.println("Connected to " + FTPConfig._host + ".");
-            System.out.print(ftp.getReplyString());
             int reply = ftp.getReplyCode();
             if (!FTPReply.isPositiveCompletion(reply)) {
                 ftp.disconnect();
@@ -77,19 +75,15 @@ public class PublishCommand {
                 }
                 var jarName = name + "-" + version + ".jar";
                 var remoteFileName = "jpm/" + jarName;
+                var jpmFile = JpmFile.fromJar(jar);
+                jpms.add(jpmFile);
                 System.out.println("Uploading " + jar + " as " + jarName);
                 try (InputStream input = new FileInputStream(jar.toFile())) {
                     ftp.storeFile(remoteFileName, input);
                 }
-                try (JpmDatabase db = JpmDatabase.remoteDatabase()) {
-                    var jpmFile = JpmFile.fromJar(jar);
-                    System.out.println("Adding jpm to remote database: " + jpmFile.getMain().getName() + "-" + jpmFile.getMain().getVersion());
-                    db.addJpm(jpmFile);
-                }
             }
             ftp.logout();
         } catch (IOException e) {
-            error = true;
             e.printStackTrace();
         } finally {
             if(ftp.isConnected()) {
@@ -99,7 +93,9 @@ public class PublishCommand {
                     // do nothing
                 }
             }
-            System.out.println("Disconnected");
+        }
+        try (JpmDatabase db = JpmDatabase.remoteDatabase()) {
+            db.addJpms(jpms);
         }
     }
 }

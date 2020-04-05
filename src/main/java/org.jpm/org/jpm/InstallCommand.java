@@ -8,6 +8,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.jar.JarFile;
 
 public class InstallCommand {
@@ -40,16 +42,11 @@ public class InstallCommand {
         } catch (IOException e) {
             throw new RuntimeException("Could not install: ", e);
         }
-        try (JpmDatabase db = JpmDatabase.localDatabase()) {
-            var jpmFile = JpmFile.fromJar(src);
-            System.out.println("Adding jpm to local database: " + jpmFile.getMain().getName() + "-" + jpmFile.getMain().getVersion());
-            db.addJpm(jpmFile);
-        }
     }
 
     private void installLibs(String libPath) {
         var finder = ModuleFinder.of(_project.getLibraryPath().resolve(libPath));
-        String mainModule = _project.getProjectName();
+        var jpms = new ArrayList<JpmFile>();
         for (var module: finder.findAll()) {
             var descriptor = module.descriptor();
             var name = descriptor.name();
@@ -64,9 +61,10 @@ public class InstallCommand {
             var src = Paths.get(module.location().get());
             var dst = _repo.getLibraryPath().resolve(fileName);
             installJar(src, dst, fileName);
-            if (mainModule.equals(name)) {
-                _mainJar = dst.toFile();
-            }
+            jpms.add(JpmFile.fromJar(src));
+        }
+        try (JpmDatabase db = JpmDatabase.localDatabase()) {
+            db.addJpms(jpms);
         }
     }
 
@@ -78,11 +76,13 @@ public class InstallCommand {
         var dst = _repo.getLibraryPath().resolve(targetJar);
         _mainJar = dst.toFile();
         installJar(src, dst, targetJar);
+        try (JpmDatabase db = JpmDatabase.localDatabase()) {
+            db.addJpms(Collections.singletonList(JpmFile.fromJar(src)));
+        }
     }
 
     private void installLauncher() {
-        try {
-            JarFile j = new JarFile(_mainJar);
+        try (JarFile j = new JarFile(_mainJar)) {
             String mainClass = j.getManifest().getMainAttributes().getValue("Main-Class");
 
             if (mainClass == null) {

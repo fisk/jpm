@@ -3,11 +3,9 @@ package org.jpm;
 import java.io.IOException;
 import java.lang.module.ModuleFinder;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -19,7 +17,7 @@ public class DependencyDetector implements ModuleInfoParser.ModuleVisitor {
 
     public void visitModule(int modifiers, String name) {}
     public void visitRequires(int modifiers, String module) {
-        var dep = new Dependency(module, true);
+        var dep = new Dependency(module);
         _dependencies.add(dep);
         _dependenciesMap.put(module, dep);
     }
@@ -62,7 +60,7 @@ public class DependencyDetector implements ModuleInfoParser.ModuleVisitor {
             for (var jpmDep: jpmFile.getMainDependencies()) {
                 var dep = _dependenciesMap.get(jpmDep.getName());
                 if (dep == null) {
-                    dep = new Dependency(jpmDep.getName(), false);
+                    dep = new Dependency(jpmDep.getName());
                     _dependenciesMap.put(jpmDep.getName(), dep);
                 }
                 dep.setVersion(jpmDep.getVersion());
@@ -76,7 +74,7 @@ public class DependencyDetector implements ModuleInfoParser.ModuleVisitor {
             var name = descriptor.name();
             var dep = _dependenciesMap.get(name);
             if (dep == null) {
-                dep = new Dependency(name, false);
+                dep = new Dependency(name);
                 _dependenciesMap.put(name, dep);
             }
             var version = descriptor.rawVersion();

@@ -30,6 +30,18 @@ public class JpmFile {
             return _version;
         }
     }
+    
+    public int hashCode() {
+        return _main._name.hashCode() + _main._version.hashCode();
+    }
+    
+    public boolean equals(Object o) {
+        if (!(o instanceof JpmFile)) {
+            return false;
+        }
+        JpmFile other = (JpmFile)o;
+        return _main._name.equals(other._main._name) && _main._version.equals(other._main._version);
+    }
 
     private JpmReference _main;
     private List<JpmReference> _mainDependencies = new ArrayList<>();

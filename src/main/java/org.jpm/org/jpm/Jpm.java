@@ -67,7 +67,7 @@ public class Jpm {
                 break;
             }
           }
-          new GetCommand(module, version, "main").run();
+          new GetCommand(module, version).run();
           if (_index == _args.length) {
               break;
           }
