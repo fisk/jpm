@@ -27,18 +27,18 @@ public class JpmDatabase implements AutoCloseable {
             }
             try (Statement stmt = _connection.createStatement()) {
                 stmt.execute("CREATE TABLE IF NOT EXISTS ARTIFACTS (\n" +
-                             "    JPM_NAME varchar(255) NOT NULL,\n" +
+                             "    JPM_NAME varchar(127) NOT NULL,\n" +
                              "    VERSION_MAJOR integer,\n" +
                              "    VERSION_MINOR integer,\n" +
                              "    VERSION_PATCH integer,\n" +
                              "    CONSTRAINT PK_JPM_NAME_VERSION PRIMARY KEY (JPM_NAME, VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH)\n" +
                              ");");
                 stmt.execute("CREATE TABLE IF NOT EXISTS DEPENDENCIES (\n" + 
-                             "    FROM_JPM_NAME varchar(255) NOT NULL,\n" + 
+                             "    FROM_JPM_NAME varchar(127) NOT NULL,\n" + 
                              "    FROM_VERSION_MAJOR integer,\n" + 
                              "    FROM_VERSION_MINOR integer,\n" + 
                              "    FROM_VERSION_PATCH integer,\n" + 
-                             "    TO_JPM_NAME varchar(255) NOT NULL,\n" + 
+                             "    TO_JPM_NAME varchar(127) NOT NULL,\n" + 
                              "    TO_VERSION_MAJOR integer,\n" + 
                              "    TO_VERSION_MINOR integer,\n" + 
                              "    TO_VERSION_PATCH integer,\n" + 
@@ -60,6 +60,7 @@ public class JpmDatabase implements AutoCloseable {
             }
             _connection.setAutoCommit(false);
         } catch (SQLException e) {
+            System.out.println(e);
         }
     }
 

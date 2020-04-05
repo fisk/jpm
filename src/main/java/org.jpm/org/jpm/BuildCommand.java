@@ -95,11 +95,9 @@ public class BuildCommand {
                 } else {
                     jpmDep = db.getJpm(jpmRef.getName());
                 }
-                if (jpmDep == null) {
-                    System.out.println("Unknown jpm: " + jpmRef.getName() + "-" + jpmRef.getVersion());
-                    throw new RuntimeException("Unknown jpm: " + jpmRef.getName() + "-" + jpmRef.getVersion());
+                if (jpmDep != null) {
+                    jpmDeps.add(jpmDep);
                 }
-                jpmDeps.add(jpmDep);
             }
         }
         new GetCommand(jpmDeps).run();
