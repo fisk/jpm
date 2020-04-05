@@ -11,7 +11,7 @@ Dependencies are stated in module-info.java files, describing your module depend
 
 Notably, module dependencies do not state a version number. So if you build without any version being stated, it will download the latest version of said dependencies. If you insist on running older versions of the dependencies, you can manually run:
 
-$ jpm get foo --version v\<major\>.\<minor\>.\<patch\>
+$ jpm get foo --version \<major\>.\<minor\>.\<patch\>
 
 This will download a specific version of foo, and its transitive closure.
 
@@ -73,7 +73,7 @@ Now you have the jpm command.
 $ jpm clean
 * clean the project.
 
-$ jpm get foo \[--version v\<major\>.\<minor\>.\<patch\>\]
+$ jpm get foo \[--version \<major\>.\<minor\>.\<patch\>\]
 
 $ jpm build
 * builds a project using zero configuration.
