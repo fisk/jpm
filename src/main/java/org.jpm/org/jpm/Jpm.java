@@ -37,6 +37,9 @@ public class Jpm {
         case "get":
             get();
             break;
+        case "clean":
+            clean();
+            break;
         case "publish":
             publish();
             break;
@@ -72,6 +75,10 @@ public class Jpm {
               break;
           }
         }
+    }
+    
+    private void clean() {
+        new CleanCommand().run();
     }
 
     private void publish() {
