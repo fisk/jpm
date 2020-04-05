@@ -5,13 +5,13 @@ A typical JPM project has no extra configuration files describing dependencies, 
 
 ## Version and Dependency Information
 
-JPM recognizes tags in the version control system of your project of the form v<major>.<minor>.<patch>, according to the semantic versioning scheme. So there is no need to redundantly store it again in a file. Before any such tag has been set, the version is assumed to be 1.0.0. Since semantic versioning is used, version conflicts are automatically resolved when the same module is needed transitively of different versions, when possible. It is however not possible to resolve automatically, when different major versions of a library is required, as major versions denote backwards incompatible changes; then manual intervention is necessary.
+JPM recognizes tags in the version control system of your project of the form v\<major\>.\<minor\>.\<patch\>, according to the semantic versioning scheme. So there is no need to redundantly store it again in a file. Before any such tag has been set, the version is assumed to be 1.0.0. Since semantic versioning is used, version conflicts are automatically resolved when the same module is needed transitively of different versions, when possible. It is however not possible to resolve automatically, when different major versions of a library is required, as major versions denote backwards incompatible changes; then manual intervention is necessary.
 
 Dependencies are stated in module-info.java files, describing your module dependencies. The module dependencies are the artifacts you depend on, so there is indeed no need to write in another file the same dependencies again.
 
 Notably, module dependencies do not state a version number. So if you build without any version being stated, it will download the latest version of said dependencies. If you insist on running older versions of the dependencies, you can manually run:
 
-$ jpm get foo --version v<major>.<minor>.<patch>
+$ jpm get foo --version v\<major\>.\<minor\>.\<patch\>
 
 This will download a specific version of foo, and its transitive closure.
 
@@ -35,9 +35,13 @@ the main class names.
 This project believes in convention over configuration. A project using jpm is structured like this:
 
 src/main/java/module.name
+
 src/main/java/module\.name/module-info.java // module with dependency information
+
 src/main/java/module\.name/\*\*/\*.java // java source code
+
 lib/main/\*.jar // Direct dependencies
+
 lib/transitive/\*.jar // Transitive dependencies
 
 The state of this file system describes the JPM, instead of a configuration file. The dependencies are whatever is in lib/main, and will be automatically populated from the module-info file.
@@ -45,8 +49,11 @@ The state of this file system describes the JPM, instead of a configuration file
 Once a project is installed, the installed structure looks like this:
 
 ~/.jpm
+
 ~/.jpm/bin // launchers; add to $PATH
+
 ~/.jpm/lib // installed modules
+
 ~/.jpm/share/module.name // project specific information
 
 The philosophy of this tool is to let each project have a local package manager, instead of a local configuration file.
@@ -66,7 +73,7 @@ Now you have the jpm command.
 $ jpm clean
 * clean the project.
 
-$ jpm get foo \[--version v<major>.<minor>.<patch>\]
+$ jpm get foo \[--version v\<major\>.\<minor\>.\<patch\>\]
 
 $ jpm build
 * builds a project using zero configuration.
