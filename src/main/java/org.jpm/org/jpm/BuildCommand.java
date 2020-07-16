@@ -4,6 +4,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executors;
@@ -106,7 +107,19 @@ public class BuildCommand {
         var jpmFile = _deps.getJpmFile();
         jpmFile.installDir(mainJpm);
         try {
-            Files.write(_project.getResourcePath().resolve("main.jpm"), jpmFile.toString().getBytes());
+            var mainJpmRes = _project.getResourcePath().resolve("main.jpm");
+            Files.write(mainJpmRes, jpmFile.toString().getBytes());
+            Files.walk(_project.getResourcePath())
+                        .filter(Files::isRegularFile)
+                        .forEach((file) -> {
+                            if (file.equals(mainJpmRes)) {
+                                return;
+                            }
+                            try {
+                                Files.copy(file, _project.getBuildPath().resolve(_project.getResourcePath().relativize(file)), StandardCopyOption.REPLACE_EXISTING);
+                            } catch (IOException e) {
+                            }
+                        });
         } catch (IOException e) {}
         Cmd.run("javac -d build --module-path lib/main:lib/transitive --module-source-path src/main/java src/main/java/**/*.java --module " + name + " -source 11");
         String mainClass = getMainClass();
