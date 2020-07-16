@@ -116,8 +116,11 @@ public class BuildCommand {
                                 return;
                             }
                             try {
-                                Files.copy(file, _project.getBuildPath().resolve(_project.getResourcePath().relativize(file)), StandardCopyOption.REPLACE_EXISTING);
+                                var dst = _project.getBuildPath().resolve(_project.getProjectName()).resolve(_project.getResourcePath().relativize(file));
+                                Files.copy(file, dst, StandardCopyOption.REPLACE_EXISTING);
+                                System.out.println("Copied resource " + file.toString() + " to " + dst.toString());
                             } catch (IOException e) {
+                                System.out.println("Couldn't copy resource " + file.toString());
                             }
                         });
         } catch (IOException e) {}
